@@ -1,0 +1,9 @@
+[project]
+name = "snakeproject"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "opencv-contrib-python>=5.0.0.93",
+    "opencv-python>=5.0.0.93",
+    "stable-baselines3[extra]>=2.9.2",
+]
