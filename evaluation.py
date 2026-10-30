@@ -3,11 +3,11 @@ import snake_env
 from stable_baselines3 import PPO
 
 # Load model
-model_path = "models/PPO/100000"  # Adjust to your saved checkpoint
+model_path = "models/PPO/600018"  # Adjust to your saved checkpoint
 model = PPO.load(model_path)
 
 # Create environment with rendering
-env = gym.make("Snake-v0", render_mode="human", render_fps=10)
+env = gym.make("Snake-v0", render_mode="human", render_fps=50)
 
 # Number of episodes to watch
 NUM_EPISODES = 5

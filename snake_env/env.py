@@ -55,7 +55,7 @@ def collision_with_self(snake_position):
 class SnakeEnv(gym.Env):
     metadata = {
         "render_modes": ["human", "rgb_array"],
-        "render_fps": 10
+        "render_fps": 150
     }
     
 

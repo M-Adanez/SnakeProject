@@ -1287,6 +1287,7 @@ dependencies = [
     { name = "opencv-contrib-python" },
     { name = "opencv-python" },
     { name = "stable-baselines3", extra = ["extra"] },
+    { name = "tensorboard" },
 ]
 
 [package.metadata]
@@ -1294,6 +1295,7 @@ requires-dist = [
     { name = "opencv-contrib-python", specifier = ">=5.0.0.93" },
     { name = "opencv-python", specifier = ">=5.0.0.93" },
     { name = "stable-baselines3", extras = ["extra"], specifier = ">=2.9.2" },
+    { name = "tensorboard", specifier = ">=2.21.0" },
 ]
 
 [[package]]
