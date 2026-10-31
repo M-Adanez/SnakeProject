@@ -9,7 +9,6 @@ from stable_baselines3.common.callbacks import EvalCallback
 @dataclass(frozen=True)
 class Config:
     ALGORITHM: str = "PPO"
-    TIMESTEPS: int = 100_000
     env_id: str = "Snake-v0"
 
     models_dir: str = f"models/{ALGORITHM}"

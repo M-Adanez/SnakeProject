@@ -11,12 +11,15 @@ from .utils import (
 
 import gymnasium as gym
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description=""
+        description="Trains a RL algorithm on the Snake env."
     )
 
     parser.add_argument(
@@ -26,10 +29,10 @@ def parse_args():
         help="Number of parallel environments (default=8)"
     )
     parser.add_argument(
-        "--n_iterations",
+        "--total_timesteps",
         type=int,
-        default=10,
-        help="Number of training iterations (default=10). Each iteration corresponds to 100_000 timesteps."
+        default=1e7,
+        help="Number of training timesteps (default=10_000_000)."
     )
     parser.add_argument(
         "--n_eval_episodes",
@@ -59,48 +62,63 @@ if __name__ == "__main__":
 
 
     # ENVS
-    if args.n_envs == 1:
-        envs = gym.make(cfg.env_id, render_mode="rgb_array")
-    else:
-        envs = SubprocVecEnv([
-            make_env(cfg.env_id)
-            for _ in range(args.n_envs)
-        ])
-    eval_env = gym.make(cfg.env_id, render_mode="rgb_array")
+    envs = make_vec_env(
+        cfg.env_id,
+        n_envs=args.n_envs,
+        seed=args.seed,
+        vec_env_cls=SubprocVecEnv if args.n_envs > 1 else DummyVecEnv,
+    )
+    eval_env = Monitor(gym.make(cfg.env_id, render_mode="rgb_array"))
+
 
     eval_freq = max(
-        (cfg.TIMESTEPS * args.n_iterations) // (args.n_envs * args.n_evals),
+        args.total_timesteps // (args.n_envs * args.n_evals),
         1
     )
-    custom_eval_callback = CustomEvalCallback(
+    eval_cb = CustomEvalCallback(
         eval_env,
         best_model_save_path=f"{cfg.models_dir}/best_model",
-        log_path="./logs/eval",
+        log_path=f"{cfg.log_dir}/eval",
         eval_freq=eval_freq,
         n_eval_episodes=args.n_eval_episodes,
         deterministic=True,
     )
+    checkpt_cb = CheckpointCallback(
+        save_freq=eval_freq,
+        save_path=cfg.models_dir,
+        name_prefix="ppo_snake",
+    )
 
 
-    # TRAINING
+    # MODEL
     model = PPO("MlpPolicy", envs, verbose=False, tensorboard_log=cfg.log_dir)
 
+    # TRAINING
     try:
+        model.learn(
+            total_timesteps=args.total_timesteps,
+            reset_num_timesteps=False,
+            tb_log_name=cfg.ALGORITHM,
+            callback=eval_cb,
+            progress_bar=True
+        )
+        model.save(f"{cfg.models_dir}/final_model")
 
-        for i in range(1, args.n_iterations + 1):
-            print(f"Iteración {i}")
-            model.learn(
-                total_timesteps=cfg.TIMESTEPS,
-                reset_num_timesteps=False,
-                tb_log_name=cfg.ALGORITHM,
-                callback=custom_eval_callback,
-                progress_bar=True
-            )
-            model.save(f"{cfg.models_dir}/{cfg.TIMESTEPS * i}")
+        # final model eval
+        mean, std = evaluate_policy(model, eval_env, n_eval_episodes=args.n_eval_episodes)
+        print(f"Final model  - mean reward: {mean:.2f} ± {std:.2f}")
 
-        # Evaluate the agent
-        mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=args.n_eval_episodes)
-        print(f"Mean reward: {mean_reward} ± {std_reward}")
+        # best model eval
+        best_path = f"{cfg.models_dir}/best_model/best_model.zip"
+        if os.path.exists(best_path):
+            best = PPO.load(best_path, device=args.device)
+            mean, std = evaluate_policy(best, eval_env, n_eval_episodes=args.n_eval_episodes)
+            print(f"Best model - mean reward: {mean:.2f} ± {std:.2f}")
+
+    except KeyboardInterrupt:
+        print("Interrupted, saving model...")
+        model.save(f"{cfg.models_dir}/interrupted_model")
 
     finally:
         envs.close()
+        eval_env.close()
