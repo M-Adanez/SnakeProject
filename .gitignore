@@ -1,4 +1,4 @@
 
 .git/
 .venv/
-snake_env/_pycache_/
+snake_env/__pycache__/
