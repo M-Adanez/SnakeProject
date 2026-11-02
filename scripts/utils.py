@@ -1,9 +1,11 @@
 
 from dataclasses import dataclass
 from collections.abc import Callable
+import optuna
 
 import gymnasium as gym
-from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.callbacks import EvalCallback,BaseCallback
+
 
 
 @dataclass(frozen=True)
@@ -55,3 +57,47 @@ class CustomEvalCallback(EvalCallback):
                 self.logger.record("custom/snake_length", info["snake_length"])
 
         return True  # Devuelve True para continuar el entrenamiento
+
+
+def calc_score(model,env,n_episodes=10):
+    scores=[]
+
+    for _ in range(n_episodes):
+        obs,_ = env.reset()
+        done=False
+
+        while not done:
+            action,_ =model.predict(obs, deterministic=True)
+
+            obs, reward, terminated, truncated, info =env.step(action)
+
+            done = terminated or truncated
+
+        scores.append(info["apples"])
+
+    return np.mean(scores)
+
+
+class OptunaCallback(BaseCallback):
+    def __init__(self, trial,eval_env,n_eval_episodes,eval_freq):
+        super().__init__()
+        self.trial=trial
+        self.eval_env=eval_env
+        self.best_score = 0
+        self.n_eval_episodes=n_eval_episodes
+        self.eval_freq=eval_freq
+
+    def _on_step(self):
+        if self.n_calls % self.eval_freq != 0:
+            return True
+        score = calc_score(self.model, self.eval_env, n_episodes=self.n_eval_episodes,deterministic=True)
+
+        self.trial.report(score, self.num_timesteps)
+
+        if score >self.best_score:
+            self.best_score=score
+        
+        if self.trial.should_prine():
+            raise optuna.TrialPruned()
+        
+        return True

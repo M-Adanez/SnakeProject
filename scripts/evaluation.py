@@ -3,7 +3,7 @@ import snake_env
 from stable_baselines3 import PPO
 
 # Load model
-model_path = "models/PPO/600018"  # Adjust to your saved checkpoint
+model_path = "models/PPO/best_model/best_model"  # Adjust to your saved checkpoint
 model = PPO.load(model_path)
 
 # Create environment with rendering

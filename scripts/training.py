@@ -47,6 +47,12 @@ def parse_args():
         help="Number of evals during training (default=10)."
     )
     parser.add_argument(
+        "--device",
+        type=int,
+        default="auto",
+        help="Device ['cpu', 'cuda', 'auto' (default)]."
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=123,
