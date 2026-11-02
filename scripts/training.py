@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument(
         "--total_timesteps",
         type=int,
-        default=1e7,
+        default=int(1e7),
         help="Number of training timesteps (default=10_000_000)."
     )
     parser.add_argument(
@@ -45,6 +45,12 @@ def parse_args():
         type=int,
         default=10,
         help="Number of evals during training (default=10)."
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=123,
+        help="Random seed to use (default=123)."
     )
 
     return parser.parse_args()
