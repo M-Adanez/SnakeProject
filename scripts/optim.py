@@ -70,15 +70,25 @@ def objective(trial: optuna.Trial) -> float:
     )
 
     eval_env=gym.make(cfg.env_id, render_mode="rgb_array")
+
+    n_steps = trial.suggest_categorical(
+        "n_steps", [256, 512, 1024, 2048, 4096]
+    )
+    batch_size = trial.suggest_categorical(
+        "batch_size", [32, 64, 128, 256]
+    )
     params = {
-        "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-3,log=True),
-        "n_steps": trial.suggest_int("n_steps", 512, 4096),
-        "batch_size": trial.suggest_int("batch_size", 32, 256),
+        # sd_increment (optional)
+        "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3,log=True),
+        "n_steps": n_steps,
+        "batch_size": batch_size,
         "n_epochs": trial.suggest_int("epochs", 3, 15),
-        "gamma": trial.suggest_float("gamma", 0.8,0.999),
+        "gamma": trial.suggest_float("gamma", 0.9, 0.999),
         "gae_lambda": trial.suggest_float("gae_lambda", 0.9, 0.99),
         "clip_range":trial.suggest_float("clip_range",0.05,0.3),
-        "ent_coef":trial.suggest_float("ent_coef", 0.01, 0.02)
+        "ent_coef": trial.suggest_float(
+            "ent_coef", 1e-4, 0.05, log=True
+        )
     }
     try:
         model=PPO(
@@ -121,7 +131,12 @@ if __name__ == "__main__":
     )
 
     # 5. Execute optimization
-    study.optimize(objective, n_trials=args.n_trials,show_progress_bar=True)
+    study.optimize(
+        objective,
+        n_trials=args.n_trials,
+        show_progress_bar=True,
+        gc_after_trial=True
+    )
 
     # 6. Print best results
     print(f"Number of finished trials: {len(study.trials)}")
