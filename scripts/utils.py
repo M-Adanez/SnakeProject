@@ -46,6 +46,12 @@ class CustomEvalCallback(EvalCallback):
             verbose=verbose
         )
 
+    def _log_success_callback(self, locals_, globals_):
+        super()._log_success_callback(locals_, globals_)
+
+        if locals_["done"]:
+            apples = locals_["info"]["apples"]
+            self.logger.record_mean("eval/mean_apples", apples)
 
     def _on_step(self) -> bool:
         super()._on_step()
