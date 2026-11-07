@@ -6,6 +6,7 @@ dependencies = [
     "opencv-contrib-python>=5.0.0.93",
     "opencv-python>=5.0.0.93",
     "optuna>=5.0.0",
+    "scipy>=1.18.1",
     "stable-baselines3[extra]>=2.9.2",
     "tensorboard>=2.21.0",
 ]
