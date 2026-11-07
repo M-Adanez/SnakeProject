@@ -1,4 +1,9 @@
 import gymnasium as gym
+from pathlib import Path
+import sys
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
 import snake_env 
 from stable_baselines3 import PPO
 

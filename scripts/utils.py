@@ -11,7 +11,7 @@ from stable_baselines3.common.callbacks import EvalCallback,BaseCallback
 @dataclass(frozen=True)
 class Config:
     ALGORITHM: str = "PPO"
-    env_id: str = "Snake-v0"
+    env_id: str = "Snake_curriculum-v0"
 
     models_dir: str = f"models/{ALGORITHM}"
     log_dir: str= "logs"

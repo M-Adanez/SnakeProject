@@ -28,26 +28,26 @@ register(
 
 # new ENVs
 register(
-    id = "Snake-curriculum",
+    id = "Snake_curriculum-v0",
     entry_point = "snake_env.env:SnakeEnv",
     reward_threshold = 50,
     max_episode_steps = 1500,
-    kwards = {"apple_curriculum": True}
+    kwargs = {"render_mode":"human", "apple_curriculum": True, "apples_rule": 10000}
 )
 
 register(
-    id = "Snake-reward_decay",
+    id = "Snake_reward_decay-v0",
     entry_point = "snake_env.env:SnakeEnv",
     reward_threshold = 50,
     max_episode_steps = 1500,
-    kwards = {"reward_decay": True}
+    kwargs = {"reward_decay": True}
 )
 
 
 register(
-    id = "Snake-curriculum+reward_decay",
+    id = "Snake_curriculum_reward_decay-v0",
     entry_point = "snake_env.env:SnakeEnv",
     reward_threshold = 50,
     max_episode_steps = 1500,
-    kwards = {"reward_decay": True, "apple_curriculum": True}
+    kwargs = {"reward_decay": True, "apple_curriculum": True}
 )

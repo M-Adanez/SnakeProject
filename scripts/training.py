@@ -1,9 +1,15 @@
 
 import os
 import argparse
+from pathlib import Path
+import sys
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
 import snake_env
-from .utils import (
+
+from utils import (
     cfg,
     make_env,
     CustomEvalCallback
@@ -25,13 +31,13 @@ def parse_args():
     parser.add_argument(
         "--n_envs",
         type=int,
-        default=8,
+        default=1,
         help="Number of parallel environments (default=8)"
     )
     parser.add_argument(
         "--total_timesteps",
         type=int,
-        default=int(1e7),
+        default=int(1e5),
         help="Number of training timesteps (default=10_000_000)."
     )
     parser.add_argument(
@@ -48,8 +54,8 @@ def parse_args():
     )
     parser.add_argument(
         "--device",
-        type=int,
-        default="auto",
+        type=str,
+        default="cpu",
         help="Device ['cpu', 'cuda', 'auto' (default)]."
     )
     parser.add_argument(
