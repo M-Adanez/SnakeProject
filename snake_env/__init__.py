@@ -3,7 +3,7 @@ from gymnasium.envs.registration import register
 register(
     id="Snake-v0",
     entry_point="snake_env.env:SnakeEnv",
-    max_episode_steps=None,
+    max_episode_steps=1500,
 )
 
 register(
@@ -30,16 +30,16 @@ register(
 register(
     id = "Snake_curriculum-v0",
     entry_point = "snake_env.env:SnakeEnv",
-    reward_threshold = 50,
+    reward_threshold = 100,
     max_episode_steps = 1500,
-    kwargs = {"render_mode":"human", "apple_curriculum": True, "apples_rule": 10000}
+    kwargs = { "apple_curriculum": True, "apples_rule": 300, "random_spawn_prob": 0.2}
 )
 
 register(
     id = "Snake_reward_decay-v0",
     entry_point = "snake_env.env:SnakeEnv",
-    reward_threshold = 50,
-    max_episode_steps = 1500,
+    reward_threshold = 100,
+    max_episode_steps = 1000,
     kwargs = {"reward_decay": True}
 )
 
@@ -47,7 +47,38 @@ register(
 register(
     id = "Snake_curriculum_reward_decay-v0",
     entry_point = "snake_env.env:SnakeEnv",
-    reward_threshold = 50,
-    max_episode_steps = 1500,
-    kwargs = {"reward_decay": True, "apple_curriculum": True}
+    reward_threshold = 100,
+    max_episode_steps = 1000,
+    kwargs = {"reward_decay": True,
+                "apple_curriculum": True, 
+               "decay_rule": 3, 
+               "apples_rule": 300, 
+               "table_size": 160,
+               "random_spawn_prob": 0.4}
+)
+
+register(
+    id = "Snake_curriculum_reward_decay-v1",
+    entry_point = "snake_env.env:SnakeEnv",
+    reward_threshold = 100,
+    max_episode_steps = 1000,
+    kwargs = {"reward_decay": True,
+                "apple_curriculum": True, 
+               "decay_rule": 5, 
+               "apples_rule": 500, 
+               "table_size": 300, 
+               "random_spawn_prob": 0.3}
+)
+
+register(
+    id = "Snake_curriculum_reward_decay-v2",
+    entry_point = "snake_env.env:SnakeEnv",
+    reward_threshold = 100,
+    max_episode_steps = 1000,
+    kwargs = {"reward_decay": True,
+            "apple_curriculum": True, 
+               "decay_rule": 7, 
+               "apples_rule": 700, 
+               "table_size": 500, 
+               "random_spawn_prob": 0.2}
 )
