@@ -1,4 +1,5 @@
 
+import numpy as np
 from dataclasses import dataclass
 from collections.abc import Callable
 import optuna
@@ -96,14 +97,14 @@ class OptunaCallback(BaseCallback):
     def _on_step(self):
         if self.n_calls % self.eval_freq != 0:
             return True
-        score = calc_score(self.model, self.eval_env, n_episodes=self.n_eval_episodes,deterministic=True)
+        score = calc_score(self.model, self.eval_env, n_episodes=self.n_eval_episodes)
 
         self.trial.report(score, self.num_timesteps)
 
         if score >self.best_score:
             self.best_score=score
         
-        if self.trial.should_prine():
+        if self.trial.should_prune():
             raise optuna.TrialPruned()
         
         return True

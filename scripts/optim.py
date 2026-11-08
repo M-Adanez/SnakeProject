@@ -78,7 +78,7 @@ def objective(trial: optuna.Trial) -> float:
         "batch_size", [32, 64, 128, 256]
     )
     params = {
-        # sd_increment (optional)
+        # sd_increment
         "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3,log=True),
         "n_steps": n_steps,
         "batch_size": batch_size,
@@ -114,11 +114,8 @@ def objective(trial: optuna.Trial) -> float:
     return mean_reward
 
 if __name__ == "__main__":
-    # Suppress verbose logs if needed: optuna.logging.set_verbosity(optuna.logging.WARNING)
-
-    # 4. Create study (direction: "maximize" for accuracy/F1, "minimize" for loss/MSE)
     study = optuna.create_study(
-        study_name="snake_optim",
+        study_name="snake_optim_v2",
         direction="maximize",
         sampler=optuna.samplers.TPESampler(seed=args.seed, n_startup_trials=20),
         pruner=optuna.pruners.MedianPruner(
@@ -130,7 +127,6 @@ if __name__ == "__main__":
         load_if_exists=True
     )
 
-    # 5. Execute optimization
     study.optimize(
         objective,
         n_trials=args.n_trials,
@@ -138,7 +134,6 @@ if __name__ == "__main__":
         gc_after_trial=True
     )
 
-    # 6. Print best results
     print(f"Number of finished trials: {len(study.trials)}")
     print(f"Best trial value: {study.best_value:.4f}")
     print("Best hyperparameters:")
