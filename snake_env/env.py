@@ -12,7 +12,7 @@ import scipy.special as sc
 # Set the goal length for the snake
 SNAKE_LEN_GOAL = 30
 # History of actions in the state
-STACKED_ACTIONS = 10
+STACKED_ACTIONS = 25
 
 # Define the size of the game table for observation and gameplay
 
@@ -42,24 +42,40 @@ def random_apple_position(apple_curriculum, apple_dist, halfTable, snake_positio
     if apple_curriculum:
         vals, probs = apple_dist
 
+        wrap_limit = ((halfTable + step - 1) // step) * step
+
         choice_x = np.random.choice(vals, p = probs)
         choice_y = np.random.choice(vals, p = probs)
 
         new_pos = [
-            head_x + int(fmod((step * choice_x), (halfTable))),
-            head_y + int(fmod((step * choice_y), (halfTable))),
+            head_x + int(fmod(step * choice_x, wrap_limit)),
+            head_y + int(fmod(step * choice_y, wrap_limit)),
         ]
 
-        while collision_with_boundaries(new_pos, 2 * halfTable) or not valid_apple_pos(new_pos, snake_positions):
+        for _ in range (64):
             choice_x = np.random.choice(vals, p = probs)
             choice_y = np.random.choice(vals, p = probs)
 
             new_pos = [
-                        head_x + int(fmod((step * choice_x), (halfTable))),
-                        head_y + int(fmod((step * choice_y), (halfTable))),
+                        head_x + int(fmod(step * choice_x, wrap_limit)),
+                        head_y + int(fmod(step * choice_y, wrap_limit)),
                     ]
+            if not collision_with_boundaries(new_pos, 2 * halfTable) and valid_apple_pos(new_pos, snake_positions):
+                return new_pos
 
-        return new_pos
+        # caso de que no se encuentre ninguna posicion libre
+        occupied = {tuple(pos) for pos in snake_positions}
+        free_cells = [
+            (x,y)
+            for x in range(head_x % step, halfTable * 2, step)
+            for y in range(head_y % step, halfTable * 2, step)
+            if (x,y) not in occupied
+        ]
+
+        if not free_cells:
+            raise RuntimeError("No queda ninguna celda libre")
+
+        return list(random.choice(free_cells))
 
     else:
 
@@ -121,7 +137,7 @@ class SnakeEnv(gym.Env):
 
     
 
-    def __init__(self, render_mode=None, action_size=1, table_size: int = 500, reward_decay = False, apple_curriculum = False, decay_rule = 10, render_fps=10, initial_sd = 1, apples_rule = 50):
+    def __init__(self, render_mode=None, action_size=1, table_size: int = 500, random_spawn = False, random_spawn_prob:float = 0, reward_decay = False, apple_curriculum = False, decay_rule = 5, render_fps=10, initial_sd = 1, apples_rule = 250):
         '''
         Utiliar reward_decay: bool para especificar si se quiere utilizar decay en el reward de cada step.
         decay_rule define cada cuantas manazas comidas se divide entre dos el reward
@@ -146,6 +162,9 @@ class SnakeEnv(gym.Env):
             shape=(5 + STACKED_ACTIONS,),
             dtype=np.float64
         )
+
+        # Spawn the snake in a random position
+        self.random_spawn_prob = random_spawn_prob
         
         # Initialize game display and reward variables
         self.img = np.zeros((self.tableSize, self.tableSize, 3), dtype='uint8')
@@ -160,9 +179,11 @@ class SnakeEnv(gym.Env):
         self.apple_distr = get_apple_distr(self.halfTable, self.sd)
         self.apples_rule = apples_rule
         self.apples_eaten = 0
+        self.can_update_sd = True
+
         # Reward engineering
         self.decay_rule = decay_rule
-        self.decay = lambda n_apples : np.log2(1 + n_apples / self.decay_rule) if reward_decay else 1
+        self.decay = lambda n_apples : np.log2(2 + n_apples / self.decay_rule) if reward_decay else 1
 
         # rendering
         self.render_mode = render_mode
@@ -177,7 +198,8 @@ class SnakeEnv(gym.Env):
 
     # Step function that updates the environment after an action is taken
     def step(self, action):
-        if (self.apples_eaten + 1) % self.apples_rule == 0:
+        if self.can_update_sd and (self.apples_eaten + 1) % self.apples_rule == 0:
+            self.can_update_sd = False
             self.compute_apple_sd()
             self.apple_distr = get_apple_distr(self.halfTable, self.sd)
 
@@ -198,32 +220,38 @@ class SnakeEnv(gym.Env):
         if self.snake_head == self.apple_position:
             self.snake_position.insert(0, list(self.snake_head))
             self.apple_position, self.score = collision_with_apple(self.apple_position, self.score, self.halfTable, self.snake_position, self.action_size, self.apple_curriculum, self.apple_distr)
-            reward += 10  # Reward for eating an apple
+            reward += 25  # Reward for eating an apple
             self.apples_eaten += 1
             apple_eaten = True
+            self.can_update_sd = True
         else:
             self.snake_position.insert(0, list(self.snake_head))
             self.snake_position.pop()
 
         # Check for collisions (with boundaries or self)
-        terminated = collision_with_boundaries(self.snake_head, self.tableSize) or collision_with_self(self.snake_position)
+        terminated = False
+        if collision_with_boundaries(self.snake_head, self.tableSize):
+            reward -= 40
+            terminated = True
+        
+        if collision_with_self(self.snake_position):
+            reward -= 25
+            terminated = True
+
         truncated = False
 
         # Handle termination (game over) scenario
-        if terminated:
-            reward -= 10  # Penalty for dying
-        elif not apple_eaten:
+        if not apple_eaten:
             # Calculate the current distance to the apple
             current_distance = np.linalg.norm(np.array(self.snake_head) - np.array(self.apple_position))
 
-            # CHANGE
             if current_distance < prev_distance:
-                reward += 1 * (1/self.decay(self.apples_eaten))
+                reward += 3 * (1/self.decay(self.score))
             else:
-                reward -= 1 * (1/self.decay(self.apples_eaten))
+                reward -= 3 * (1/self.decay(self.score))
 
         # TRY
-        reward -= 0.1
+        reward -= 0.5
 
         # Information dictionary
         info = {"apples": self.score}
@@ -248,11 +276,21 @@ class SnakeEnv(gym.Env):
         
         # Reset snake position, spaced according to the movement step size
         step = 10 * self.action_size
-        self.snake_position = [
-            [self.halfTable, self.halfTable],
-            [self.halfTable - step,self.halfTable],
-            [self.halfTable - 2 * step,self.halfTable]
-        ]
+        head_x = head_y = self.halfTable
+        if self.random_spawn_prob > 0 and self.np_random.random() < self.random_spawn_prob:
+            grid_start = self.halfTable % step
+            grid = range(grid_start, self.tableSize, step)
+            # The body extends two cells to the left of the head.
+            valid_columns = [
+                x for x in grid
+                if not collision_with_boundaries((x - 2 * step, grid_start), self.tableSize)
+            ]
+            if not valid_columns:
+                raise ValueError("El tablero no tiene espacio para la serpiente inicial")
+            head_x = valid_columns[self.np_random.integers(len(valid_columns))]
+            head_y = grid[self.np_random.integers(len(grid))]
+
+        self.snake_position = [[head_x - segment * step, head_y] for segment in range(3)]
         
         # Generate random apple position aligned with the movement grid
         self.apple_position = random_apple_position(self.apple_curriculum, self.apple_distr, self.halfTable, self.snake_position, self.action_size)
@@ -264,7 +302,7 @@ class SnakeEnv(gym.Env):
         
         # Reset score and snake head position
         self.score = 0
-        self.snake_head = [self.halfTable, self.halfTable]
+        self.snake_head = self.snake_position[0].copy()
 
         # Initialize direction of the snake
         self.direction = 1
@@ -361,7 +399,7 @@ class SnakeEnv(gym.Env):
 
 
 def main():
-    env = SnakeEnv(apple_curriculum=True)
+    env = SnakeEnv(apple_curriculum=True, random_spawn_prob=0.8, table_size= 150)
     distances = 0
     i = 0
     while True:

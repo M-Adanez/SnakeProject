@@ -2,13 +2,28 @@
 
 Este challenge esta pensado para que el alumnado pueda **modificar el entorno** y, a la vez, mantener un **protocolo de evaluacion comun** con `benchmark.py`.
 
+## Instalación con uv
+
+Desde la raíz del proyecto, sincroniza el entorno y comprueba que PyTorch detecta la GPU:
+
+```powershell
+uv sync
+uv run python -c "import torch; assert torch.cuda.is_available(); print(torch.__version__, torch.cuda.get_device_name(0))"
+```
+
+En Windows de 64 bits (x86-64), `uv` instala PyTorch con CUDA 12.6 desde el índice oficial de PyTorch. Para entrenar en la GPU:
+
+```powershell
+uv run python scripts/training.py --device cuda
+```
+
 ## Estructura relevante
 
 - `snake_env/env.py`: implementacion del entorno `SnakeEnv`.
 - `snake_env/__init__.py`: registro de variantes del entorno con `gymnasium.register`.
 - `EnvCreation.md`: guia detallada sobre `register` y como crear variantes del entorno.
-- `training.py`: ejemplo base de entrenamiento con PPO.
-- `benchmark.py`: evaluacion comun para comparar agentes.
+- `scripts/training.py`: ejemplo base de entrenamiento con PPO.
+- `scripts/benchmark.py`: evaluacion comun para comparar agentes.
 
 ## API del entorno
 
@@ -94,11 +109,11 @@ En `snake_env/__init__.py` se usan varios `register(...)` de Gymnasium para defi
 Uso recomendado:
 
 ```bash
-python benchmark.py --model-path models/PPO/100000 --episodes 100
+uv run python -m scripts.benchmark --model-path models/PPO/final_model.zip --episodes 100
 ```
 
 Con ventana de grafica:
 
 ```bash
-python benchmark.py --model-path models/PPO/100000 --episodes 100 --show-plot
+uv run python -m scripts.benchmark --model-path models/PPO/final_model.zip --episodes 100 --show-plot
 ```
