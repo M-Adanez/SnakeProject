@@ -154,20 +154,25 @@ class NormalizedPositions(FlattenExtractor):
         return super().forward(observations) / self.escala
 
 
-def make_ppo_normalized(env, divisor, args, learning_rate = 3e-4):
+def make_ppo_normalized(env, divisor, args, learning_rate=0.0006217264243836279):
     return PPO(
         "MlpPolicy",
         env,
-        n_steps=args.n_steps,
+        n_steps=4096,
+        batch_size=64,
+        n_epochs=13,
+        learning_rate=learning_rate,
+        gamma=0.9315601793271204,
+        gae_lambda=0.91276989459545,
+        clip_range=0.1312962772610166,
+        ent_coef=0.0017946640158490546,
         device=args.device,
         tensorboard_log=cfg.log_dir,
-        learning_rate=learning_rate,
         policy_kwargs={
             "features_extractor_class": NormalizedPositions,
             "features_extractor_kwargs": {"divisor": divisor},
         },
     )
-
 
 def store_normalized_model(modelo, ruta, *, eval_env):
     with torch.random.fork_rng(devices=[]):

@@ -115,7 +115,7 @@ def objective(trial: optuna.Trial) -> float:
 
 if __name__ == "__main__":
     study = optuna.create_study(
-        study_name="snake_optim_v2",
+        study_name="snake_optim_v3",
         direction="maximize",
         sampler=optuna.samplers.TPESampler(seed=args.seed, n_startup_trials=20),
         pruner=optuna.pruners.MedianPruner(

@@ -8,7 +8,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 import snake_env
 
-from utils import (
+from .utils import (
     cfg,
     CustomEvalCallback,
     parse_args,
