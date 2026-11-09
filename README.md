@@ -49,20 +49,21 @@ La clase principal es `SnakeEnv(gym.Env)` en `snake_env/env.py`.
 
 ## Estado (observacion)
 
-La observacion es un vector de longitud `5 + STACKED_ACTIONS`.
+La observacion es un vector de longitud `9 + 2 * BODY_POSITIONS` (59 con el valor actual de 25).
 
 Componentes en orden:
 
 1. `head_x`: coordenada x de la cabeza.
 2. `head_y`: coordenada y de la cabeza.
-3. `apple_delta_x`: diferencia x entre manzana y cabeza.
-4. `apple_delta_y`: diferencia y entre manzana y cabeza.
-5. `snake_length`: longitud de la serpiente.
-6. `prev_actions`: ultimas acciones (`STACKED_ACTIONS`, por defecto 5).
+3. Cuatro indicadores de choque, en orden izquierda, derecha, abajo y arriba.
+4. `apple_delta_x`: diferencia x entre manzana y cabeza.
+5. `apple_delta_y`: diferencia y entre manzana y cabeza.
+6. `snake_length`: longitud de la serpiente.
+7. Un par `(dx, dy)` por cada uno de los primeros `BODY_POSITIONS` segmentos despues de la cabeza, en casillas relativas a ella. Los pares sobrantes se rellenan con ceros.
 
 El espacio es:
 
-- `observation_space = Box(low=-tableSizeObs, high=tableSizeObs, shape=(5 + STACKED_ACTIONS,), dtype=float64)`
+- `observation_space = Box(low=-tableSizeObs, high=tableSizeObs, shape=(9 + 2 * BODY_POSITIONS,), dtype=float64)`
 
 ## Acciones posibles
 

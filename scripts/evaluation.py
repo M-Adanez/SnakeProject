@@ -1,3 +1,4 @@
+import argparse
 import gymnasium as gym
 from pathlib import Path
 import sys
@@ -7,24 +8,39 @@ if str(ROOT_DIR) not in sys.path:
 import snake_env 
 from stable_baselines3 import PPO
 
-# Load model
-model_path = "models/PPO/interrupted_model.zip"  # Adjust to your saved checkpoint
-model = PPO.load(model_path)
+def main():
+    parser = argparse.ArgumentParser(description="Evalúa un checkpoint de Snake.")
+    parser.add_argument("--episodes", type=int, default=1000)
+    parser.add_argument("--render_mode", type=str, default=None)
+    parser.add_argument("--render_fps", type=int, default=60)
+    args = parser.parse_args()
+    if args.episodes < 1:
+        parser.error("--episodes debe ser mayor que cero")
 
-# Create environment with rendering
-env = gym.make("Snake-v0", render_mode="human", render_fps=50)
+    model_selection = input("Selecciona el modelo (ruta relativa a models/PPO): ")
+    model = PPO.load(Path("models/PPO") / model_selection, device="cpu")
+    total_apples = total_steps = step_limits = 0
 
-# Number of episodes to watch
-NUM_EPISODES = 5
+    with gym.make("Snake-v0", render_mode = args.render_mode, render_fps = args.render_fps) as env:
+        print(f"Evaluando {args.episodes} partidas de hasta {env.spec.max_episode_steps} pasos.", flush=True)
+        for episode in range(1, args.episodes + 1):
+            obs, _ = env.reset()
+            terminated = truncated = False
+            while not (terminated or truncated):
+                action, _ = model.predict(obs, deterministic=True)
+                obs, _, terminated, truncated, info = env.step(action)
+                total_steps += 1
+                env.render()
 
-for ep in range(NUM_EPISODES):
-    obs, _ = env.reset()
-    done = False
-    total_reward = 0
 
-    while not done:
-        action, _ = model.predict(obs, deterministic=False)
-        obs, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
-        total_reward += reward
-        env.render()  
+            total_apples += info["apples"]
+            step_limits += truncated and not terminated
+            if episode == 1 or episode % 100 == 0 or episode == args.episodes:
+                print(
+                    f"{episode}/{args.episodes} partidas · {total_apples / episode:.2f} manzanas de media · ",
+                    flush=True,
+                )
+
+
+if __name__ == "__main__":
+    main()

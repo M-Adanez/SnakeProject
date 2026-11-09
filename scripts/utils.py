@@ -146,14 +146,15 @@ class NormalizedPositions(FlattenExtractor):
     def __init__(self, observation_space, divisor):
         super().__init__(observation_space)
         escala = torch.ones(self.features_dim)
-        escala[:4] = divisor
+        escala[:2] = divisor  # Coordenadas de la cabeza
+        escala[6:8] = divisor  # Desplazamiento a la manzana
         self.register_buffer("escala", escala, persistent=False)
 
     def forward(self, observations):
         return super().forward(observations) / self.escala
 
 
-def make_ppo_normalized(env, divisor, args, learning_rate = 3e-4):
+def make_ppo_normalized(env, divisor, args, gamma, learning_rate = 3e-4, **kwargs):
     return PPO(
         "MlpPolicy",
         env,
@@ -165,6 +166,7 @@ def make_ppo_normalized(env, divisor, args, learning_rate = 3e-4):
             "features_extractor_class": NormalizedPositions,
             "features_extractor_kwargs": {"divisor": divisor},
         },
+        **kwargs
     )
 
 
@@ -174,9 +176,10 @@ def store_normalized_model(modelo, ruta, *, eval_env):
     model.policy.load_state_dict(modelo.policy.state_dict())
     net = model.policy.mlp_extractor
     divisor = eval_env.unwrapped.tableSize - 10 * eval_env.unwrapped.action_size
+    escala = NormalizedPositions(eval_env.observation_space, divisor).escala
     with torch.no_grad():
-        net.policy_net[0].weight[:, :4].div_(divisor)
-        net.value_net[0].weight[:, :4].div_(divisor)
+        net.policy_net[0].weight.div_(escala)
+        net.value_net[0].weight.div_(escala)
     model.save(ruta)
 
 
@@ -185,7 +188,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Trains a RL algorithm on the Snake env."
     )
-
     parser.add_argument(
         "--n_envs",
         type=int,
@@ -221,7 +223,7 @@ def parse_args():
     parser.add_argument(
         "--device",
         type=str,
-        default="cuda",
+        default="cpu",
         help="Device ['cpu', 'cuda', 'auto' (default)]."
     )
     parser.add_argument(

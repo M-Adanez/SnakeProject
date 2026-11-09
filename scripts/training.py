@@ -12,7 +12,6 @@ from utils import (
     cfg,
     CustomEvalCallback,
     parse_args,
-    NormalizedPositions,
     make_ppo_normalized,
     store_normalized_model
 )
@@ -32,27 +31,22 @@ def main():
     args = parse_args()
     if args.total_timesteps < 3:
         raise ValueError("Se necesitan al menos tres pasos para repartir entre las fases")
-
     small_steps = max(1, args.total_timesteps // 5)
     medium_steps = max(1, args.total_timesteps * 3 // 10)
     large_steps = args.total_timesteps - small_steps - medium_steps
-    '''
     stages = (
         ("Snake_curriculum_reward_decay-v0", small_steps),
         ("Snake_curriculum_reward_decay-v1", medium_steps),
         ("Snake_curriculum_reward_decay-v2", large_steps),
     )
-    '''
-    stages = (
-        ("Snake_curriculum-v0", large_steps),
-    )
 
     models_dir = Path(cfg.models_dir)
     models_dir.mkdir(parents=True, exist_ok=True)
-    # Use the registered limit, or bound training evaluations on an uncapped board.
+
+
     eval_max_steps = gym.spec("Snake-v0").max_episode_steps or cfg.eval_max_steps
     eval_env = Monitor(gym.make(
-        "Snake-v0", render_mode="rgb_array", max_episode_steps=eval_max_steps
+        "Snake-v0", render_mode=None, max_episode_steps=eval_max_steps
     ))
     exportar = partial(store_normalized_model, eval_env=eval_env)
     model = None
@@ -69,9 +63,6 @@ def main():
             save_model=exportar,
         )
 
-        lr_ranges = ((4e-4, 2e-4), (2e-4, 1e-4), (1e-4, 3e-5))
-
-
         for stage, (env_id, timesteps) in enumerate(stages, start=1):
             envs = make_vec_env(
                 env_id,
@@ -82,9 +73,8 @@ def main():
             try:
                 size = envs.get_attr("tableSize", indices=0)[0]
                 step = 10 * envs.get_attr("action_size", indices=0)[0]
-                start_lr, end_lr = lr_ranges[stage - 1]
-                lr_schedule = LinearSchedule(start_lr, end_lr, end_fraction=1.0)
-                next_model = make_ppo_normalized(envs, size - step, args, learning_rate = lr_schedule)
+                divisor = size - step
+                next_model = make_ppo_normalized(envs, divisor, args, learning_rate = 0.00062, gamma = 0.93, gae_lambda = 0.91, clip_range = 0.13)
                 if model is not None:
                     next_model.policy.load_state_dict(model.policy.state_dict())
                 model = next_model
@@ -99,7 +89,7 @@ def main():
             finally:
                 envs.close()
 
-        exportar(model, models_dir / "final_model")
+        exportar(model, models_dir / "final_model_V2")
         mean, std = evaluate_policy(model, eval_env, n_eval_episodes=args.n_eval_episodes)
         print(f"Final model - mean reward: {mean:.2f} ± {std:.2f}")
 

@@ -1,12 +1,16 @@
 import argparse
 from pathlib import Path
+import sys
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 from stable_baselines3 import PPO
 
-import snake_env  # noqa: F401 - Registers Snake environments via gymnasium.register
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
+import snake_env 
 
 METRICS = {
     "reward": {"label": "retorno", "unit": "puntos"},
@@ -79,10 +83,10 @@ def plot_metric(values: np.ndarray, metric: str, output_path: Path, show_plot: b
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Benchmark de politicas entrenadas en Snake.")
-    parser.add_argument("--model-path", type=str, default="models/PPO/100000", help="Ruta al modelo entrenado de SB3 (con o sin .zip).")
+    parser.add_argument("--model-path", type=str, default="models/PPO/best_model/best_model.zip", help="Ruta al modelo entrenado de SB3 (con o sin .zip).")
     parser.add_argument("--env-id", type=str, default="Snake-v0", help="ID del entorno registrado en gymnasium.")
     parser.add_argument("--episodes", type=int, default=100, help="Numero de episodios de evaluacion.")
-    parser.add_argument("--metric", choices=list(METRICS), default="reward", help="Metrica a evaluar: 'reward' (retorno acumulado) o 'apples' (manzanas recogidas).")
+    parser.add_argument("--metric", choices=list(METRICS), default="apples", help="Metrica a evaluar: 'reward' (retorno acumulado) o 'apples' (manzanas recogidas).")
     parser.add_argument("--stochastic", action="store_true", help="Si se activa, usa politica no determinista (por defecto es determinista).")
     parser.add_argument("--plot-path", type=str, default="logs/benchmark_returns.png", help="Ruta donde guardar la grafica de barras.")
     parser.add_argument("--show-plot", action="store_true", help="Mostrar la grafica en pantalla al finalizar.")
@@ -93,8 +97,8 @@ def main() -> None:
     args = build_parser().parse_args()
     deterministic = not args.stochastic
 
-    model = PPO.load(resolve_model_path(args.model_path))
-    env = gym.make(args.env_id, render_mode="rgb_array")
+    model = PPO.load(resolve_model_path(args.model_path), device='cpu')
+    env = gym.make(args.env_id, render_mode=None)
 
     try:
         values = evaluate_policy_metric(model, env, metric=args.metric, num_episodes=args.episodes, deterministic=deterministic)

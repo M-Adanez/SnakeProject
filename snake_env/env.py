@@ -6,16 +6,10 @@ import cv2
 import random
 from math import fmod
 import time
-from collections import deque
 import scipy.special as sc
 
-# Set the goal length for the snake
-SNAKE_LEN_GOAL = 30
-# History of actions in the state
-STACKED_ACTIONS = 25
-
-# Define the size of the game table for observation and gameplay
-
+# BOdy positions to store
+BODY_POSITIONS = 15
 
 # Initialize max score
 max_score = 0
@@ -159,7 +153,7 @@ class SnakeEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-self.tableSizeObs,
             high=self.tableSizeObs,
-            shape=(5 + STACKED_ACTIONS,),
+            shape=(9 + 2 * BODY_POSITIONS,),
             dtype=np.float64
         )
 
@@ -203,9 +197,6 @@ class SnakeEnv(gym.Env):
             self.compute_apple_sd()
             self.apple_distr = get_apple_distr(self.halfTable, self.sd)
 
-        # Store previous actions
-        self.prev_actions.append(action)
-
         # Calculate previous distance to the apple
         prev_distance = np.linalg.norm(np.array(self.snake_head) - np.array(self.apple_position))
 
@@ -220,7 +211,7 @@ class SnakeEnv(gym.Env):
         if self.snake_head == self.apple_position:
             self.snake_position.insert(0, list(self.snake_head))
             self.apple_position, self.score = collision_with_apple(self.apple_position, self.score, self.halfTable, self.snake_position, self.action_size, self.apple_curriculum, self.apple_distr)
-            reward += 25  # Reward for eating an apple
+            reward += 12  # Reward for eating an apple
             self.apples_eaten += 1
             apple_eaten = True
             self.can_update_sd = True
@@ -231,11 +222,11 @@ class SnakeEnv(gym.Env):
         # Check for collisions (with boundaries or self)
         terminated = False
         if collision_with_boundaries(self.snake_head, self.tableSize):
-            reward -= 40
+            reward -= 17
             terminated = True
         
         if collision_with_self(self.snake_position):
-            reward -= 25
+            reward -= 15
             terminated = True
 
         truncated = False
@@ -246,27 +237,36 @@ class SnakeEnv(gym.Env):
             current_distance = np.linalg.norm(np.array(self.snake_head) - np.array(self.apple_position))
 
             if current_distance < prev_distance:
-                reward += 3 * (1/self.decay(self.score))
+                reward += 1 * (1/self.decay(self.score))
             else:
-                reward -= 3 * (1/self.decay(self.score))
+                reward -= 1 * (1/self.decay(self.score))
 
         # TRY
-        reward -= 0.5
+        reward -= 0.3
 
         # Information dictionary
         info = {"apples": self.score}
 
-        # Create observation of the current state
+        return self._observation(), reward, terminated, truncated, info
+
+    def _observation(self):
         head_x = self.snake_head[0]
         head_y = self.snake_head[1]
         snake_length = len(self.snake_position)
         apple_delta_x = self.apple_position[0] - head_x
         apple_delta_y = self.apple_position[1] - head_y
 
-        observation = [head_x, head_y, apple_delta_x, apple_delta_y, snake_length] + list(self.prev_actions)
-        observation = np.array(observation, dtype=np.float64)
+        common_features = [
+            head_x, head_y, *self._danger_flags(),
+            apple_delta_x, apple_delta_y, snake_length,
+        ]
+        step_size = 10 * self.action_size
+        body_features = [0.0] * (2 * BODY_POSITIONS)
+        for i, (x, y) in enumerate(self.snake_position[1:BODY_POSITIONS + 1]):
+            body_features[2 * i] = (x - head_x) / step_size
+            body_features[2 * i + 1] = (y - head_y) / step_size
 
-        return observation, reward, terminated, truncated, info
+        return np.array(common_features + body_features, dtype=np.float64)
 
     # Reset the environment to the initial state
     def reset(self, *, seed=None, options=None):
@@ -311,22 +311,7 @@ class SnakeEnv(gym.Env):
         self.prev_reward = 0
         self.total_reward = 0
 
-        # Create observation of the current state
-        head_x = self.snake_head[0]
-        head_y = self.snake_head[1]
-        snake_length = len(self.snake_position)
-        apple_delta_x = self.apple_position[0] - head_x
-        apple_delta_y = self.apple_position[1] - head_y
-
-        # Initialize deque to store previous actions
-        self.prev_actions = deque(maxlen=STACKED_ACTIONS)
-        for _ in range(STACKED_ACTIONS):
-            self.prev_actions.append(-1)
-
-        observation = [head_x, head_y, apple_delta_x, apple_delta_y, snake_length] + list(self.prev_actions)
-        observation = np.array(observation, dtype=np.float64)
-
-        return observation, {}
+        return self._observation(), {}
 
     # Render the game visually using OpenCV
     def render(self, mode=None):
@@ -372,6 +357,29 @@ class SnakeEnv(gym.Env):
                 -1
             )
 
+    def _danger_flags(self):
+        offsets = ((-1, 0), (1, 0), (0, 1), (0, -1))
+        opposite = (1, 0, 3, 2)
+        step_size = 10 * self.action_size
+        head_x, head_y = self.snake_head
+        danger = []
+
+        for action in range(4):
+            effective_action = self.direction if action == opposite[self.direction] else action
+            dx, dy = offsets[effective_action]
+            next_head = [head_x + dx * step_size, head_y + dy * step_size]
+
+            body = self.snake_position
+            if next_head != self.apple_position:
+                body = body[:-1] # if doesnt grow
+
+            danger.append(int(
+                collision_with_boundaries(next_head, self.tableSize)
+                or next_head in body
+            ))
+
+        return danger
+
     # Handle actions and update the snake's position
     def _take_action(self, action):
         # Avoid direct opposite movements
@@ -396,20 +404,3 @@ class SnakeEnv(gym.Env):
             self.snake_head[1] += 10*self.action_size
         elif action == 3:  # Move up
             self.snake_head[1] -= 10*self.action_size
-
-
-def main():
-    env = SnakeEnv(apple_curriculum=True, random_spawn_prob=0.8, table_size= 150)
-    distances = 0
-    i = 0
-    while True:
-        try:
-            env.reset()
-            distances += np.linalg.norm(np.array(env.snake_head) - np.array(env.apple_position))
-            env.render('human')
-        except KeyboardInterrupt:
-            break
-        i += 1
-    print(f"Distancia media de aparicion: {distances / i}")
-if __name__ == "__main__":
-    main()

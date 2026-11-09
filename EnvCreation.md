@@ -92,4 +92,4 @@ Y `render_mode` se sigue decidiendo en `gym.make(...)` segun el uso (entrenamien
 - Cambiar `max_episode_steps`.
 - Variar `action_size` para cambiar velocidad efectiva.
 - Modificar la recompensa en `step` para incentivar estrategias distintas.
-- Cambiar `STACKED_ACTIONS` para dar mas o menos memoria temporal.
+- Cambiar `BODY_POSITIONS` para mostrar mas o menos segmentos del cuerpo en la observacion.
